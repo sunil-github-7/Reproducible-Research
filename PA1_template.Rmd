@@ -1,0 +1,191 @@
+---
+title: "Project1"
+author: "Sunil"
+date: "June 25, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r packages, echo=FALSE}
+install.packages("ggplot2")
+install.packages("data.table")
+install.packages("gtools")
+install.packages("Hmisc")
+
+#Install packages and call their libraries
+library("ggplot2")
+library("data.table")
+library("gtools")
+
+library(Hmisc)
+```
+
+```{r Readdata}
+zip = "repdata%2Fdata%2Factivity.zip"
+link = "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+dir = "data"
+
+# File download verification. If file does not exist, download to working directory.
+if(!file.exists(zip))
+{
+  download.file(link, zip , mode = "wb") 
+}
+
+# File unzip verification. If the directory does not exist, unzip the downloaded file.
+if(!file.exists(dir))
+{
+  unzip("repdata%2Fdata%2Factivity.zip", exdir="data")
+  getwd()
+}
+
+setwd("D:/data")
+# File Read data file.
+activity<-read.csv("activity.csv", header=T)
+View(activity)
+names(activity)
+stepsday = tapply(activity$steps, activity$date, sum, na.rm=TRUE)
+View(stepsday)
+stepsdayDF=data.frame(stepsday)
+View(stepsdayDF)
+
+```
+
+## Including Plots
+
+Histogram 
+```{r histogram, echo=TRUE}
+ggplot(stepsdayDF, aes(x = stepsday)) +
+    geom_histogram(fill = "blue", binwidth = 1000) +
+    labs(title = "Daily Steps", x = "Steps", y = "Frequency")
+```
+
+
+
+## Mean and median number of steps taken each day
+
+
+Mean and Median 
+```{r Stats, echo=TRUE}
+summary(stepsdayDF)
+#Mean
+mean(stepsdayDF$steps,na.rm=TRUE)
+
+# Media
+median(stepsdayDF$steps,na.rm=TRUE)
+
+
+```
+
+
+
+## Time series plot of the average number of steps taken
+
+Time series
+```{r TimeSeries, echo=TRUE}
+  #REmove NA
+stepstime = aggregate(activity$steps, by=list(activity$interval), mean, na.rm=TRUE)
+names(stepstime)[1] = "Interval"
+names(stepstime)[2] = "Steps"
+names(stepstime)
+# Plot
+ggplot(stepstime, aes(x = Interval,y=Steps)) +
+  labs(title = "Time series plot of the average number of steps taken", x = "interval", y = "steps")+
+  geom_line(color="BLUE") 
+
+```
+
+
+
+## The 5-minute interval that, on average, contains the maximum number of steps
+
+
+Max steps 
+```{r max, echo=TRUE}
+  #Max steps 
+stepstime = aggregate(activity$steps, by=list(activity$interval), mean, na.rm=TRUE)
+names(stepstime)[1] = "Interval"
+names(stepstime)[2] = "Steps"
+names(stepstime)
+
+
+summary(stepstime)
+maxsteps = stepstime[which.max(stepstime$Steps),]
+maxsteps
+```
+
+
+## Code to describe and show a strategy for imputing missing data
+
+
+
+Strategy to replace data
+```{r max, echo=TRUE}
+# generate Mean Data2 by interval
+stepstime = aggregate(activity$steps, by=list(activity$interval), mean, na.rm=TRUE)
+names(stepstime)[1] ="interval"
+names(stepstime)[2] ="steps"
+
+meanint=mean(stepstime$interval)
+meanint
+meanstep=mean(stepstime$steps)
+meanstep
+round(meanstep)
+meanstep
+activityMiss=activity
+
+
+
+activityMiss$steps <- impute(activityMiss$steps, round(meanstep))
+activityMiss$steps=round(activityMiss$steps,digits=0)
+View(activityMiss)
+
+
+```
+
+
+
+
+
+
+## Including Plots
+
+Histogram 
+```{r histogram-2, echo=TRUE}
+
+
+stepsdayMiss = tapply(activityMiss$steps, activity$date, sum, na.rm=TRUE)
+View(stepsdayMiss)
+stepsdayMissDF=data.frame(stepsdayMiss)
+View(stepsdayMissDF)
+
+
+ggplot(stepsdayMissDF, aes(x = stepsday)) +
+    geom_histogram(fill = "blue", binwidth = 1000) +
+    labs(title = "Daily Steps with no Missing values", x = "Steps", y = "Frequency")
+```
+
+
+
+## Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+
+Panel plot
+```{r panel, echo=TRUE}
+
+
+activityMiss$day =  ifelse(as.POSIXlt(activityMiss$date)$wday %in% c(0,6), 'weekend', 'weekday')
+View(activityMiss)
+
+
+names(activityMiss)
+ggplot(activityMiss , aes(x = interval , y = steps, color=day))  + facet_grid(day ~ . )  +  labs(title = "Avg steps", x = "interval", y = "steps")  + geom_line()
+```
